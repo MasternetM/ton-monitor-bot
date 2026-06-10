@@ -30,7 +30,7 @@ CHANNELS = [
 ]
 
 # Ключевые слова для фильтрации
-KEYWORDS = ["agent", "ai", "autonomous", "smart contract", "development", "tools"]
+KEYWORDS = ["agent", "ai", "autonomous", "tools", "library", "blueprint", "sdk", "update", "release", "new", "ton", "tvm", "smart contract", "developer"]
 
 # OAuth2 scope для Gmail
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
