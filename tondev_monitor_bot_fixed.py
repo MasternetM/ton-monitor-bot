@@ -19,15 +19,17 @@ EMAIL_TO = "blackart2585@gmail.com"
 
 # Каналы для мониторинга
 CHANNELS = [
-    "@Openai_U",
-    "@thirtythreestables",
+    "@toncoin_rus",
+    "@forklog",
+    "@the_open_network",
     "@tondev_news",
     "@tonstatus",
-    "@telepeng",
+    "@hiaimedia",
+    "@ai_newz",
 ]
 
 # Ключевые слова для фильтрации
-KEYWORDS = ["agent", "ai", "autonomous", "tools", "library", "blueprint", "sdk", "update", "release", "new", "ton", "tvm", "smart contract", "developer"]
+KEYWORDS = ["agent", "ai", "агент", "агенты", "autonomous", "ton", "telegram", "update", "release", "запуск", "обновление", "инсайд", "тренд", "нейросеть", "llm", "mcp", "web3", "dapp", "cocoon", "managed bots"]
 
 
 def send_email(subject, messages_by_channel):
