@@ -71,10 +71,9 @@ def send_email(subject, messages_by_channel):
         msg['To'] = EMAIL_TO
         msg.attach(MIMEText(email_body, 'html'))
 
-        with smtplib.SMTP_SSL('smtp-relay.brevo.com', 465, timeout=15) as server:
+        with smtplib.SMTP('smtp-relay.brevo.com', 587, timeout=15) as server:
+            server.starttls()
             server.login(EMAIL_FROM, BREVO_SMTP_KEY)
-            
-            
             server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
 
         print(f"✅ Письмо отправлено через Brevo ({total} сообщений)")
