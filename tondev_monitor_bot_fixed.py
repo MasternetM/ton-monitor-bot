@@ -159,4 +159,6 @@ if __name__ == "__main__":
     print("🚀 Запускаю мониторинг каналов...")
     print(f"⏰ Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     asyncio.run(main())
+
+ 
     
