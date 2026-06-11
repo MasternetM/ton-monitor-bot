@@ -1,9 +1,8 @@
 import asyncio
 import os
-import smtplib
+import urllib.request
+import json
 from datetime import datetime, timedelta
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from dotenv import load_dotenv
@@ -14,7 +13,7 @@ load_dotenv()
 API_ID = int(os.getenv("TELEGRAM_API_ID", ""))
 API_HASH = os.getenv("TELEGRAM_API_HASH", "")
 SESSION_STRING = os.getenv("SESSION_STRING", "")
-BREVO_SMTP_KEY = os.getenv("BREVO_SMTP_KEY", "")
+BREVO_API_KEY = os.getenv("BREVO_SMTP_KEY", "")
 EMAIL_FROM = "blackart2585@gmail.com"
 EMAIL_TO = "blackart2585@gmail.com"
 
@@ -65,19 +64,27 @@ def send_email(subject, messages_by_channel):
         </html>
         """
 
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = EMAIL_FROM
-        msg['To'] = EMAIL_TO
-        msg.attach(MIMEText(email_body, 'html'))
+        data = json.dumps({
+            "sender": {"name": "TON Monitor", "email": EMAIL_FROM},
+            "to": [{"email": EMAIL_TO}],
+            "subject": subject,
+            "htmlContent": email_body
+        }).encode("utf-8")
 
-        with smtplib.SMTP('smtp-relay.brevo.com', 587, timeout=15) as server:
-            server.starttls()
-            server.login(EMAIL_FROM, BREVO_SMTP_KEY)
-            server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
+        req = urllib.request.Request(
+            "https://api.brevo.com/v3/smtp/email",
+            data=data,
+            headers={
+                "api-key": BREVO_API_KEY,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            method="POST"
+        )
 
-        print(f"✅ Письмо отправлено через Brevo ({total} сообщений)")
-        return True
+        with urllib.request.urlopen(req, timeout=15) as response:
+            print(f"✅ Письмо отправлено через Brevo API ({total} сообщений)")
+            return True
 
     except Exception as e:
         print(f"❌ Ошибка отправки письма: {e}")
