@@ -1,15 +1,11 @@
 import asyncio
 import os
+import smtplib
 from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from telethon import TelegramClient
 from telethon.sessions import StringSession
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.exceptions import RefreshError
-from googleapiclient.discovery import build
-from email.mime.text import MIMEText
-import base64
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,6 +14,8 @@ load_dotenv()
 API_ID = int(os.getenv("TELEGRAM_API_ID", ""))
 API_HASH = os.getenv("TELEGRAM_API_HASH", "")
 SESSION_STRING = os.getenv("SESSION_STRING", "")
+BREVO_SMTP_KEY = os.getenv("BREVO_SMTP_KEY", "")
+EMAIL_FROM = "blackart2585@gmail.com"
 EMAIL_TO = "blackart2585@gmail.com"
 
 # Каналы для мониторинга
@@ -32,27 +30,9 @@ CHANNELS = [
 # Ключевые слова для фильтрации
 KEYWORDS = ["agent", "ai", "autonomous", "tools", "library", "blueprint", "sdk", "update", "release", "new", "ton", "tvm", "smart contract", "developer"]
 
-# OAuth2 scope для Gmail
-SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
-def get_gmail_service():
-    creds = None
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
-    return build('gmail', 'v1', credentials=creds)
-
-def send_email_via_gmail(subject, messages_by_channel):
+def send_email(subject, messages_by_channel):
     try:
-        service = get_gmail_service()
-
         total = sum(len(msgs) for msgs in messages_by_channel.values())
 
         email_body = f"""
@@ -73,34 +53,37 @@ def send_email_via_gmail(subject, messages_by_channel):
                 <div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
                     <p><strong>Время:</strong> {msg.date.strftime('%Y-%m-%d %H:%M:%S')}</p>
                     <p><strong>Сообщение:</strong></p>
-                    <p>{msg.text[:500]}...</p>
+                    <p>{msg.text[:500]}</p>
                     <p><a href="https://t.me/{channel_name}/{msg.id}">Открыть в Telegram</a></p>
                 </div>
                 """
 
         email_body += """
                 <hr>
-                <p>Это автоматическое письмо от бота мониторинга</p>
+                <p>Автоматическое письмо от бота мониторинга TON каналов</p>
             </body>
         </html>
         """
 
-        message = MIMEText(email_body, 'html')
-        message['to'] = EMAIL_TO
-        message['subject'] = subject
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = EMAIL_FROM
+        msg['To'] = EMAIL_TO
+        msg.attach(MIMEText(email_body, 'html'))
 
-        raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
-        service.users().messages().send(userId='me', body={'raw': raw}).execute()
+        with smtplib.SMTP_SSL('smtp-relay.brevo.com', 465, timeout=15) as server:
+            server.login(EMAIL_FROM, BREVO_SMTP_KEY)
+            
+            
+            server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
 
-        print(f"✅ Письмо отправлено ({total} сообщений из {len(messages_by_channel)} каналов)")
+        print(f"✅ Письмо отправлено через Brevo ({total} сообщений)")
         return True
 
-    except RefreshError:
-        print("❌ Ошибка авторизации Gmail. Удали token.json и попробуй ещё раз")
-        return False
     except Exception as e:
         print(f"❌ Ошибка отправки письма: {e}")
         return False
+
 
 async def get_recent_messages(client, channel_name, hours=24):
     try:
@@ -126,10 +109,10 @@ async def get_recent_messages(client, channel_name, hours=24):
         print(f"  ❌ {channel_name}: ошибка — {e}")
         return []
 
+
 async def main():
     if not SESSION_STRING:
         print("❌ ОШИБКА: SESSION_STRING не установлен!")
-        print("Запусти setup_session.py локально чтобы получить session string")
         return
 
     client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
@@ -140,7 +123,6 @@ async def main():
 
         if not await client.is_user_authorized():
             print("❌ ОШИБКА: Сессия невалидна!")
-            print("Запусти setup_session.py локально чтобы обновить session string")
             return
 
         print(f"\n🔍 Проверяю {len(CHANNELS)} каналов...\n")
@@ -154,8 +136,8 @@ async def main():
 
         if total > 0:
             print(f"\n✅ Найдено {total} интересных постов")
-            subject = f"Мониторинг каналов — {total} интересных постов за 24ч"
-            send_email_via_gmail(subject, messages_by_channel)
+            subject = f"Мониторинг TON каналов — {total} постов за 24ч"
+            send_email(subject, messages_by_channel)
         else:
             print("\nℹ️ Интересных сообщений не найдено")
 
@@ -163,6 +145,7 @@ async def main():
         print(f"❌ Ошибка: {e}")
     finally:
         await client.disconnect()
+
 
 if __name__ == "__main__":
     print("🚀 Запускаю мониторинг каналов...")
